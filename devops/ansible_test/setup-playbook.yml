@@ -1,0 +1,85 @@
+---
+- hosts: all
+  vars:
+    oh_my_zsh_theme: robbyrussell
+    oh_my_zsh_plugins:
+      - git
+      - dotenv
+      - aws
+      - django
+      - colored-man-pages
+      - colorize
+      - npm
+      - git-flow
+      - pip
+      - dircycle
+      - dirhistory
+      - sudo
+      - virtualenv
+      - copydir
+      - docker
+      - autojump
+      - history-substring-search
+      - tmux
+      - osx
+
+      - zsh-apple-touchbar
+      - zsh-syntax-highlighting  # and all other guys
+      - zsh-autosuggestions
+      - zsh-interactive-cd
+      - zsh-navigation-tools
+      - zsh-completions
+
+  tasks:
+    - name: Install apt packages
+      become: true
+      package:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - python
+        - python3
+        - python-pip
+        - python3-pip
+        - vim
+        - zsh
+        - autojump
+        - tmux
+        - fzf
+        - ruby
+        - ruby-dev
+        - virtualenv
+        - libpq-dev
+
+        - net-tools
+
+    - name: Install gem packages
+      gem:
+        name: "{{ item }}"
+        state:  latest
+      with_items:
+        - rake
+        - lolcat
+        - colorls
+
+    - name: Install pip packages
+      pip:
+        name: ['virtualenv', 'setuptools', 'awscli', 'psycopg2', 'python-jenkins', 'lxml', 'jenkins']
+        state:  latest
+
+  roles:
+    - role: geerlingguy.pip
+
+    - role: gantsign.oh-my-zsh
+      users:
+        - username: root
+          oh_my_zsh:
+            theme: powerlevel10k/powerlevel10k
+
+    - role: "nickjj.docker"
+      tags: ["docker"]
+      vars:
+        docker__state: "latest"
+        docker__channel: ["stable"]
+
+    - role: common

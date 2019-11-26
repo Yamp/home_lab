@@ -1,0 +1,24 @@
+[package]
+name = "union_find"
+version = "0.1.0"
+authors = ["dimitrius <yampolskiydv@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "union_find"
+crate-type = ["cdylib"]
+
+[dependencies]
+ena = "*"
+disjoint-sets = "*"
+
+[dependencies.cpython]
+version = "*"
+features = ["extension-module"]
+
+#[dependencies.pyo3]
+#version = "*"
+#features = ["extension-module"]
+

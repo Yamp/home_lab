@@ -1,0 +1,13 @@
+build:
+	if [ ! -f ./build ]; then
+		mkdir build
+	fi
+	easycython example_py.py
+	icc -I`python3-config --exec-prefix`/include -I`python3-config --exec-prefix`/include/python3.7m -DNDEBUG -O2 -Wall -fPIC -c mkl_cython.c -o build/mkl_cython.o
+	icc -shared -Wl,-rpath=$ORIGIN/../lib/:`python3-config --exec-prefix`/lib \
+		-L`python3-config --exec-prefix`/lib \
+		-lmkl_rt build/mkl_cython.o -o mkl_cython.so
+	rm -rf build
+
+clean:
+	rm *.so *c

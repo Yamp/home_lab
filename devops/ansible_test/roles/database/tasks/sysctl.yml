@@ -1,0 +1,19 @@
+---
+- name: Set db sysctls
+  sysctl:
+    name: "{{ item.split('=')[0] }}"
+    value: "{{ item.split('=')[-1] }}"
+  with_items:
+    - vm.swappiness=5
+#    - vm.nr_hugepages=10
+#    - kernel.shmmax=10737418240  # должно вычисляться
+#    - vm.min_free_kbytes=30000
+    - vm.dirty_ratio=2
+    - vm.dirty_background_ratio=1
+    - kernel.sched_autogroup_enabled=0
+    - kernel.sched_migration_cost=5000000
+    - vfs_cache_pressure=1000
+    - vm.overcommit_memory=2
+    - vm.overcommit_ratio=98
+    - net.core.somaxconn=30000  # а это для redis'a
+

@@ -1,0 +1,39 @@
+---
+- name: Install zsh
+  become: true
+  package:
+    name: zsh
+    state: latest
+
+# plugin names will be like their repos names
+- name: Clone all cool zsh plugins
+  git:
+    update: yes
+    repo: "{{ item }}"
+    dest: ~/.oh-my-zsh/custom/plugins/{{ item.split('/')[-1].split('.')[0] }}
+  with_items:
+    - https://github.com/zsh-users/zsh-syntax-highlighting.git
+    - https://github.com/zsh-users/zsh-autosuggestions
+    - https://github.com/changyuheng/zsh-interactive-cd
+    - https://github.com/zsh-users/zsh-completions.git
+    - https://github.com/floor114/zsh-apple-touchbar.git
+
+- name: Get all cool zsh themes
+  git:
+    update: yes
+    repo: "{{ item }}"
+    dest: ~/.oh-my-zsh/custom/themes/{{ item.split('/')[-1].split('.')[0] }}
+  with_items:
+    - https://github.com/romkatv/powerlevel10k.git
+    - https://github.com/Powerlevel9k/powerlevel9k.git
+
+- name: Get iterm integration
+  get_url:
+    url: https://iterm2.com/shell_integration/zsh
+    dest: ~/.iterm2_shell_integration.zsh
+
+- name:
+  blockinfile:
+    path: ~/.zshrc
+    block: |
+      source ~/.iterm2_shell_integration

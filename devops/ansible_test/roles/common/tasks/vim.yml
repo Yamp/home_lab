@@ -1,0 +1,16 @@
+- name: Install vim
+  package:
+    name: vim
+    status: latest
+
+- name: Get ultimate vim
+  git:
+    update: yes
+    depdth: 1
+    repo: https://github.com/amix/vimrc.git
+    dest: ~/.vim_runtime
+  register: ultimate_vim_code
+
+- name: Execute ultimate vim script
+  command: sh ~/.vim_runtime/install_awesome_vimrc.sh
+  when: ultimate_vim_code.changed

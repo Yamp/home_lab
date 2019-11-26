@@ -1,0 +1,8 @@
+- name: Setting ssh keys
+  authorized_key:
+    user: root
+    state: present
+    key: "{{ item }}"
+  with_file:
+    - files/dimitrius-club-ssh-key
+    - files/macbook-ssh-key

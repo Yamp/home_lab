@@ -1,0 +1,16 @@
+[package]
+name = "unioufind"
+version = "0.1.0"
+authors = ["dimitrius <yampolskiydv@gmail.com>"]
+edition = "2018"
+
+
+[dependencies]
+petgraph = "*"
+disjoint-sets = "*"
+
+# bls-bla dependencies
+
+[dependencies.partitions]
+version = "*"
+features = ["compact"]

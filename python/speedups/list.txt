@@ -1,0 +1,2 @@
+Numexpr. Хороший проект для оптимизации numpy-выражений https://numexpr.readthedocs.io/en/latest/
+Bottleneck. Набор более быстрых функций для numpy https://pypi.org/project/Bottleneck/
