@@ -5,11 +5,6 @@ import numpy as np
 
 @dataclass
 class LinerProblem:
-    """
-    Standard form - maximization, dot(c*x), x>=0
-    all constraints are <=
-    """
-
     A_lb: np.ndarray
     A_ub: np.ndarray
     A_eq: np.ndarray
@@ -30,7 +25,7 @@ class LinerProblem:
 
     def lb2ub(self):
         """
-        [Ax >= b] -> [- Ax <= -b]
+        [Ax >= b] -> [-Ax <= -b]
         """
         self.A_ub = np.vstack((
             self.A_ub,

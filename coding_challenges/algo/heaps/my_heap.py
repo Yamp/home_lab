@@ -1,7 +1,6 @@
 from typing import Tuple
 
 import numpy as np
-from attr import dataclass
 
 
 class BinHeap:

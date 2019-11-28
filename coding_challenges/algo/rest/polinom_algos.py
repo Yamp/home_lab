@@ -3,6 +3,27 @@ from typing import Any
 import numpy as np
 
 
+def closest_2deg(n: int):
+    i = 1
+    while 2 ** i < n:
+        i *= 2
+    return i
+
+
+def recursive_fft(x):
+    # TODO: think about it, cooley-tukey
+    n = len(x)
+    if n <= 1: return x
+
+    even = recursive_fft(x[0::2])
+    odd = recursive_fft(x[1::2])
+
+    T = [np.exp(-2j * np.pi * k / n) * odd[k] for k in range(n // 2)]
+    res = [even[k] + T[k] for k in range(n // 2)] + [even[k] - T[k] for k in range(n // 2)]
+
+    return res
+
+
 class Polynom:
     def __init__(self, deg: int = 2):
         self.coeffs = np.zeros(deg)
@@ -42,8 +63,13 @@ class Polynom:
         return res
 
     def fft(self):
-        ...
-        # TODO:
+        n = closest_2deg(len(self.coeffs))
+        data = np.zeros(n)
+        data[:n] = self.coeffs
+
+        T = [np.exp(-2j * np.pi * k / n) * odd[k] for k in range(n // 2)]
+
+        N = len(x)
 
     def newton_interpolation(self, values):
         ...
@@ -57,7 +83,7 @@ class Polynom:
         res = Polynom(self.deg + other.deg)
         for i in range(self.deg):
             for j in range(self.deg):
-                ... # TODO:
+                ...  # TODO:
 
     def karatsuba_mult(self, other):
         ...
