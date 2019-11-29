@@ -4,7 +4,7 @@ from typing import List, Optional
 
 # TODO: 2-3-trees, 2-3-4-tree, fenvik, segment-trees, B+, B*, R-tree, kd-tree
 # TODO: Range trees, finger tree
-
+# TODO: add building perfect tree from an array
 @dataclass
 class Node:
     """
