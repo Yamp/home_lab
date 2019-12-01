@@ -1,9 +1,12 @@
-from dataclasses import dataclass
+from collections import deque
+from dataclasses import dataclass, field
+from typing import Iterable, List, Optional, Type
 
-from typing import List, Optional
+import numpy as np
 
-# TODO: 2-3-trees, 2-3-4-tree, fenvik, segment-trees, B+, B*, R-tree, kd-tree
-# TODO: Range trees, finger tree
+
+# TODO: 2-3-trees, 2-3-4-tree, B+, B*, R-tree, kd-tree
+# TODO: finger tree
 # TODO: add building perfect tree from an array
 @dataclass
 class Node:
@@ -15,38 +18,42 @@ class Node:
 
     TODO: successor, predessor
     """
-    parent: 'Node' = None
-    children: List = None
+    parent: Optional['Node'] = None
+    children: List = field(default_factory=list)
 
-    keys: List = None
-    values: List = None
+    keys: List = field(default_factory=list)
+    values: List = field(default_factory=list)
 
-    def get_branch(self, k) -> 'Node':
-        """
-        Appropriate branch for search
-        """
-        for i, key in enumerate(self.keys):
-            if k < key:
-                return self.children[i]
-        else:
-            return self.children[-1]
+    # ----------------------------------- access methods ------------------------------------------
 
+    def __str__(self):
+        return f'Node({self.keys})'
+
+    def real_children(self) -> Iterable['Node']:
+        return (c for c in self.children if c is not None)
+
+    # nth-parent or root
     def nth_parent(self, n: int) -> 'Node':
         """
         nth parent or root
         """
         return self if n <= 0 else self.parent.nth_parent(n - 1)
 
+    def grandpa(self) -> 'Node':
+        return self.nth_parent(2)
+
+    # num of child to search k in
     def get_branch_num(self, k) -> int:
         """
         Number of child for search
         """
         for i, key in enumerate(self.keys):
             if k < key:
-                return self.children[i]
+                return i
         else:
-            return self.children[-1]
+            return len(self.children) - 1
 
+    # check if i'm n'th child
     def is_nth_child(self, n: int) -> bool:
         return (
                 n in self.parent.children[n]
@@ -56,35 +63,20 @@ class Node:
     def is_leaf(self) -> bool:
         return not any(self.children)
 
-    def is_fake_top(self) -> bool:
-        return self.parent is None
-
     def is_root(self) -> bool:
-        return self.parent.is_fake_top()
-
-    def grandpa(self) -> 'Node':
-        return self.nth_parent(2)
+        return self.parent is None \
+               or self.parent is self
 
     def set_nth_child(self, child: 'Node', num: int) -> None:
         if child is not None:
             child.parent = self
         self.children[num] = child
 
-    def found(self, k):
-        return k in self.keys
-
     def _index(self, k) -> int:
         try:
             return self.children.index(k)
         except ValueError:
             return -1
-
-    def find(self, k):
-        if i := self._index(k) != -1:
-            return self.values[i]
-        elif self.is_leaf():
-            return None
-        return self.get_branch(k).find(k)
 
     def get_my_child_num(self):
         for i, c in enumerate(self.parent.children):
@@ -97,30 +89,208 @@ class Node:
 
         self.set_nth_child(new_node, num=len(children) - 1)  # noqa Type checker
 
+    # ---------------------------- Iterators -----------------------------------------------
+
+    def nodes_dfs(self):
+        """
+        Time of going into node during dfs
+        """
+        stack = deque()
+        stack += [self]
+
+        while stack:
+            node = stack.pop()
+            yield node
+            for c in reversed(node.real_children()):  # to process children left to right
+                stack += [c]
+
+    def nodes_topological(self):
+        """
+        Topological order.
+        Time of dfs going out
+        """
+        stack = deque()
+        stack += [(self, 'in')]
+
+        while stack:
+            node, event = stack.pop()
+
+            if event == 'out':
+                yield node
+            else:
+                for c in node.real_children():
+                    stack += [(c, 'in')]
+                stack += [(node, 'out')]
+
+    # yield node and (key, value) index
+    def nodes_sorted(self):
+        """
+        Dfs middle time
+        """
+        stack = deque()
+        stack += [(self, -1, 'in')]
+
+        while stack:
+            node, i, event = stack.pop()
+
+            if event == 'middle':
+                yield node, i
+            if event == 'in':
+                alive_children = list(node.real_children())[::-1]
+
+                if len(alive_children) < 2:
+                    # Case for None children. Mainly for binary trees
+                    stack += [(node.children[1], -1, 'in')] if node.children[1] is not None else []
+                    stack += [(node, 0, 'middle')]
+                    stack += [(node.children[0], -1, 'in')] if node.children[0] is not None else []
+                else:
+                    res = [None] * (2 * len(alive_children) - 1)
+                    res[::2] = [(c, -1, 'in') for c in alive_children]
+                    res[1::2] = [  # interleaving children with proper key of node
+                        (node, i, 'middle')
+                        for i in range(len(alive_children) - 1)
+                    ]
+                    stack += res
+
+    def nodes_bfs(self):
+        """
+        Bfs in time
+        """
+        queue = deque()
+        queue += [self]
+
+        while queue:
+            node = queue.popleft()
+            yield node
+            for c in node.real_children():
+                queue += [c]
+
+    def nodes_bfs_out(self):
+        """
+        Bfs in time
+        """
+        queue = deque()
+        queue += [(self, 'in')]
+
+        while queue:
+            node, event = queue.popleft()
+
+            if event == 'out':
+                yield node
+            else:
+                for c in node.real_children():
+                    queue += [(c, 'in')]
+                queue += [(node, 'out')]
+
+    # yield node and (key, value) index
+    def nodes_bfs_middle(self):
+        """
+        Bfs middle time
+        """
+        stack = deque()
+        stack += [(self, -1, 'in')]
+
+        while stack:
+            node, i, event = stack.popleft()
+
+            if event == 'middle':
+                yield node, i
+            if event == 'in':
+                alive_children = list(node.real_children())
+
+                if not alive_children:
+                    stack += [(node, 0, 'middle')]
+                else:
+                    res = 2 * len(alive_children) - 1
+                    res[::2] = alive_children
+                    res[1::2] = [  # interleaving children with proper key of node
+                        (node, i, 'middle')
+                        for i in range(len(alive_children) - 1)
+                    ]
+                    stack += res
+
+    # ---------------------------- Search operations ---------------------------------------
+
+    # branch for father search
+    def get_branch(self, k) -> 'Node':
+        """
+        Appropriate branch for search
+        """
+        for i, key in enumerate(self.keys):
+            if k < key:
+                return self.children[i]
+        else:
+            return self.children[-1]
+
     def usual_paste(self, k, v=None):
         next_branch = self.get_branch(k)
         if next_branch is None:
-            new_node = self.__class__(keys=[k], values=[v], parent=self)
+            # new_node = self.__class__(keys=[k], values=[v], parent=self)
+            new_node = self.__class__()
+            new_node.keys = [k]
+            new_node.values = [v]
             self.set_nth_child(new_node, num=self.get_branch_num(k))  # noqa Type checker
             return new_node
         else:
             return next_branch.usual_paste(k, v)
 
-    def replace_by(self, subtree: "BinaryNode"):
+    def find(self, k):
+        if i := self._index(k) != -1:
+            return self.values[i]
+        elif self.is_leaf():
+            return None
+        return self.get_branch(k).find(k)
+
+    def found(self, k):
+        return k in self.keys
+
+    def paste(self, k, v=None):
+        return self.usual_paste(k, v)
+
+    # def successor(self):
+    #
+
+    def get_sorted_array(self):
+        res = [n.keys[i] for n, i in self.nodes_sorted()]
+        return res
+
+    # ---------------------------- Methods for tree manipulation ---------------------------
+
+    def replace_by(self, subtree: Optional['Node']):
         num = self.get_my_child_num()
         self.parent.set_nth_child(subtree, num)
+        return self
+
+    def remove_subtree(self):
+        return self.replace_by(None)
+
+    def swap_with(self, other: 'Node') -> 'Node':
+        self.replace_by(other)
+        other.replace_by(self)
+        return self
 
 
 @dataclass
 class BinaryNode(Node):
+    children: List[Optional['BinaryNode']] = field(default_factory=list)
+    parent: Optional['BinaryNode'] = None
+    keys: List = field(default_factory=list)
+    values: List = field(default_factory=list)
 
     def __init__(self):
-        super(self.__class__).__init__(self)
+        super().__init__()
 
         self.children = [None, None]
-        self.parent: Optional['BinaryNode'] = None
-        self.keys: List = [None]
-        self.values: List = [None]
+        self.parent = None
+
+        self.keys = [None]
+        self.values = [None]
+
+    def __str__(self):
+        return f'Node({self.key})'
+
+    def __repr__(self):
+        return str(self)
 
     @property
     def key(self):
@@ -175,9 +345,6 @@ class BinaryNode(Node):
     def get_child(self, is_left: bool) -> 'BinaryNode':
         return self.left if is_left else self.right
 
-    def children(self) -> List['BinaryNode']:
-        return [self.left, self.right]
-
     def grandpa(self) -> 'BinaryNode':
         """ It's here just for the type """
         return self.nth_parent(2)
@@ -222,33 +389,68 @@ class BinaryNode(Node):
             candidate_son = candidate_son.parent
         return candidate_son.parent
 
-    def small_turn(self):
-        is_right = self.is_left()  # TODO: wtf?
-        is_left = not is_right
+    # ---------------------------- Methods for tree manipulation ---------------------------
 
-        b = self.get_child(is_right)
-        c = b.get_child(is_left)
+    def replace_by(self, subtree: Optional['BinaryNode']):
+        """ Speedup of the common case """
+        self.parent.set_child(subtree, self.is_left())
 
-        self.replace_by(b)
-        b.set_child(self, is_left)
-        self.set_child(c, is_right)
+    # ---------------------------- Methods for balancing -----------------------------------
 
-    def big_turn(self):
-        is_right = self.is_left()  # TODO: wtf?
+    def small_turn(self) -> 'BinaryNode':
+        """
+        The only possible small turn for self
+        The picture is for self.is_left = True, so rotating to right
+        (to_left = False)
+                P           self
+               / \          / \
+            self ...  =>  ...  P
+             / \              / \
+           ...  C            C  ...
 
-        self.get_child(is_right).small_turn()
-        self.small_turn()
+        Returns self
+        """
+        to_left = not self.is_left()  # if i'm left, I can rotate only to right
+        p = self.parent
+        c = self.get_child(is_left=to_left)
+
+        self.set_child(p, is_left=to_left)
+        p.set_child(c, is_left=not to_left)
+        p.replace_by(self)
+
+        return self
+
+    def promote(self) -> 'BinaryNode':
+        """ Just alias """
+        return self.small_turn()
+
+    def big_turn(self) -> 'BinaryNode':
+        """
+        The only possible big turn for self
+        The picture is for self.is_left = True, so rotating to right
+        (to_left = False)
+                G              self
+               / \             /  \
+             ...  P     =>    A    B
+                 / \         / \  / \
+              self ...     ... M N  ...
+              / \
+             M  N
+        Returns self
+        """
+        return self.small_turn().small_turn()
+
+    def rotate(self, to_left):
+        if to_left:
+            self.right.small_turn()
+        else:
+            self.left.small_turn()
 
 
 @dataclass
 class RedBlackBinaryNode(BinaryNode):
-    def __init__(self):
-        super().__init__()
-        self.left: Optional['RedBlackBinaryNode'] = None
-        self.right: Optional['RedBlackBinaryNode'] = None
-        self.parent: Optional['RedBlackBinaryNode'] = None
-
-        self._is_black: bool = True
+    parent: Optional['RedBlackBinaryNode'] = None
+    _is_black: bool = True
 
     @staticmethod
     def check_black(node: 'RedBlackBinaryNode'):
@@ -263,15 +465,6 @@ class RedBlackBinaryNode(BinaryNode):
 
     def make_red(self):
         self._is_black = False
-
-    # case 5
-    def rotate_to(self, left):
-        p = self.parent
-        g = self.grandpa()
-
-        g.set_child(self.brother(), is_left=left)
-        p.set_child(g, is_left=not left)
-        g.replace_by(p)
 
     # case 4
     def small_rotate_to(self, left):
@@ -291,9 +484,11 @@ class RedBlackBinaryNode(BinaryNode):
                 self.grandpa().balance()
             else:
                 is_left_rotate = self.parent.is_left()
-                if not self.parent.is_root() and self.is_left() != self.parent.is_left():  # 4 case
+                if not self.parent.is_root() and self.is_left() != self.parent.is_left():
+                    # 4 case
                     self.small_rotate_to(left=is_left_rotate)
-                elif not self.parent.is_root():  # 5 case
+                elif not self.parent.is_root():
+                    # 5 case
                     self.rotate_to(left=is_left_rotate)
 
     def paste(self, k, v=None):
@@ -303,13 +498,101 @@ class RedBlackBinaryNode(BinaryNode):
         return pasted_node
 
 
+class AATreeNode(BinaryNode):
+    """
+    Mostly like red-black
+    On one level only one son and only right
+    """
+
+    def __init__(self):
+        super().__init__()
+
+        self.children = [None, None]
+        self.parent = None
+
+        self.keys = [None]
+        self.values = [None]
+
+        # this is like height, but doesn't include "red" nodes
+        self.level: int = 1  # 1 is leaf level
+
+    # ---------------------------------- balancing -------------------------------------
+
+    # delete left "red" node
+    def skew(self):
+        l = self.left
+        level = l.level if l else None
+
+        if self.level == level:
+            self.rotate(to_left=False)
+            return True
+
+        return False
+
+    # delete 2 right "red" nodes
+    def split(self):
+        r = self.right
+        rr = r.right if r else None
+        level = rr.level if rr else None
+
+        if self.level == level:
+            r.level += 1
+            r.promote()
+            return True
+
+        return False
+
+    def decrease_level(self):
+        l, r = self.left, self.right
+        new_level = min(l.level if l else 0, r.level if r else 0) + 1
+
+        if new_level < self.level:
+            self.level = new_level
+
+            if r is not None:
+                r.level = new_level
+
+            return True
+
+        return False
+
+    def balance_node(self):
+        # TODO: conditions?
+        self.decrease_level()
+        self.skew()
+        self.split()
+
+    def balance(self):
+        """ first balanced is parent """
+        p = self
+        while not p.is_root():
+            p = p.parent
+            p.balance_node()
+
+    # ----------------------------- operations -------------------------------------
+
+    def paste(self, k, v=None):
+        new = self.usual_paste(k, v)
+        new.balance()
+
+    def delete(self):
+        succ = self.node_successor()
+        self.key = succ.key, self.value = succ.value
+
+        succ.remove_subtree()
+        succ.parent.balance()
+
+
 @dataclass
 class AVLBinaryNode(BinaryNode):
-    height: int = 1
+    height: int = 0
 
     def get_balance(self):
         if self.left.height - self.right.height:
             pass
+
+    def balance(self, k, v=None):
+        self.usual_paste(k, v)
 
     def paste(self, k, v=None):
         pasted_node = self.usual_paste(k, v)
@@ -345,7 +628,7 @@ class TwoThreeTree(Node):
         next_branch = self.get_branch(k)
         if next_branch is None:
             self.set_nth_child(new_node, num=self.get_branch_num(k))  # noqa Type checker
-            return new_node
+            # return new_node
         else:
             return next_branch.usual_paste(k, v)
 
@@ -353,8 +636,32 @@ class TwoThreeTree(Node):
         pasted_node = self.usual_paste(k, v)
 
 
-asd = RedBlackBinaryNode(key=0)
-asd.paste(1)
-asd.paste(2)
-asd.paste(3)
-asd.paste(4)
+class SearchTree():
+    def __init__(self, node_class):
+        self.fake_node = node_class()
+
+        self.fake_node = self.children[0]
+
+
+def tree_sort(node_class: Type['Node'], data: np.ndarray):
+    node = node_class()
+    node.keys = [data[0]]
+
+    for d in data[1:]:
+        node.paste(d)
+    return node.get_sorted_array()
+
+
+def test_tree_sort(node_class):
+    data = np.arange(0, 3)
+    np.random.shuffle(data)
+    data = [0, 1, 2]
+    res = tree_sort(node_class, data)
+    print(data, res)
+    assert res == sorted(data)
+    print(node_class.__name__, 'sorting works fine!')
+
+
+if __name__ == "__main__":
+    # test_tree_sort(BinaryNode)  # OK!
+    test_tree_sort(AATreeNode)
