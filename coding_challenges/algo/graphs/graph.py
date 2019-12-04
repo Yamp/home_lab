@@ -5,6 +5,9 @@ import numpy as np
 from coding_challenges.algo.structures.array_queue import NumberArrayDeque
 
 
+# TODO: euler cycle
+# TODO: scc
+
 class Graph:
     def __init__(self):
         self.data = None

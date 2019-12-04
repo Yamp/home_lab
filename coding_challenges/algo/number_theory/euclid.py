@@ -1,6 +1,17 @@
 from typing import Tuple
 
 
+def fast_paw(a: int, n: int) -> int:
+    res = 1
+    while n > 0:
+        n, r = divmod(n, 2)
+        if r == 1:
+            res *= a
+        a *= a
+
+    return res
+
+
 def euclid_gcd(a: int, b: int) -> int:
     while a != 0 and b != 0:
         a, b = b % a, a
@@ -20,8 +31,3 @@ def extended_gcd_recursive(a: int, b: int) -> Tuple[int, int, int]:
 
     gcd, x_prev, y_prev = extended_gcd_recursive(b % a, a)
     return gcd, y_prev - b // a * x_prev, x_prev
-
-
-def extended_gcd(a: int, b: int) -> Tuple[int, int, int]:
-    while a != 0 and b != 0:
-        d, r = divmod(b, a)
