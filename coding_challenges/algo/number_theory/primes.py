@@ -93,6 +93,11 @@ def rabin_miller_prime_test(num: int, rounds=100) -> bool:
     ...
 
 
+def is_power_of_number(n: int):
+    a = pow(2, n-1, n) - 1
+    return gcd(a, n) > 1
+
+
 if __name__ == "__main__":
     # print(eratosfen_sieve(10000))
     # print(sanduram_sieve(10000))

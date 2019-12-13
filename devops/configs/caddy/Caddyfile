@@ -1,0 +1,43 @@
+
+pgadmin.lolmath.website, jenkins.lolmath.website, portainer.lolmath.website {
+  # tls /certs/fullchain1.pem /certs/privkey1.pem
+  gzip
+  tls {
+    max_certs 10
+  }
+  redir {
+    if {scheme} is http
+    / https://{host}{uri}
+  }
+  # basicauth / lolmath lol-math-pass-2018
+
+  proxy / traefik {
+      transparent
+  }
+}
+
+lolmath.website, *.lolmath.website {
+  # tls /certs/fullchain1.pem /certs/privkey1.pem
+  gzip
+  tls {
+    max_certs 10
+  }
+  redir {
+    if {scheme} is http
+    / https://{host}{uri}
+  }
+
+  proxy / traefik {
+      transparent
+  }
+
+  jwt {
+    path /
+    allow sub lolmath
+    redirect /login
+  }
+
+  login / {
+    simple lolmath=lol-math-pass-2018
+  }
+}

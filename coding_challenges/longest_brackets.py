@@ -76,3 +76,4 @@ def diff_if_len_too_small(s):
 
 class Solution:
     def strongPasswordChecker(self, s: str) -> int:
+        ...

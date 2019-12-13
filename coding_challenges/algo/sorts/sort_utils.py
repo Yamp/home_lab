@@ -63,7 +63,7 @@ def merge(
                 break
 
 
-@jit(nopython=True, parallel=True, nogil=True, fastmath=True)
+@jit(nopython=True, nogil=True, fastmath=True)
 def find_min(arr, first: int, last: int) -> Any:
     current_min, ind = arr[first], first
 
@@ -72,6 +72,17 @@ def find_min(arr, first: int, last: int) -> Any:
             current_min, ind = arr[i], i
 
     return current_min, ind
+
+
+@jit(nopython=True, nogil=True, fastmath=True)
+def find_max(arr, first: int, last: int) -> Any:
+    current_max, ind = arr[first], first
+
+    for i in range(first + 1, last + 1):
+        if arr[i] > current_max:
+            current_max, ind = arr[i], i
+
+    return current_max, ind
 
 
 @jit(nopython=True, parallel=True, nogil=True, fastmath=True)
@@ -92,3 +103,4 @@ def heap_merge(
         dst_first: int
 ) -> None:
     pass
+    # TODO: heap_merge

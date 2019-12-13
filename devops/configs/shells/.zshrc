@@ -11,7 +11,6 @@ export HISTFILESIZE=100000
 export HISTSIZE=100000
 export SAVEHIST=100000
 export WORKON_HOME=$HOME/.virtualenvs
-export PYENV_ROOT="$HOME/.pyenv"
 export MACOSX_DEPLOYMENT_TARGET=10.15
 export OSX_VERSION=10.15
 export SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk

@@ -1,6 +1,6 @@
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional, Type
+from typing import Iterable, List, Optional, Tuple, Type
 
 import numpy as np
 
@@ -122,6 +122,19 @@ class Node:
                     stack += [(c, 'in')]
                 stack += [(node, 'out')]
 
+    def nodes_dfs_inout(self):
+        stack = deque()
+        stack += [(self, 'in')]
+
+        while stack:
+            node, event = stack.pop()
+            yield node, event
+
+            if event == 'in':
+                for c in node.real_children():
+                    stack += [(c, 'in')]
+                stack += [(node, 'out')]
+
     # yield node and (key, value) index
     def nodes_sorted(self):
         """
@@ -234,7 +247,7 @@ class Node:
         else:
             return next_branch.usual_paste(k, v)
 
-    def find(self, k):
+    def find(self, k) -> Any:
         if i := self._index(k) != -1:
             return self.values[i]
         elif self.is_leaf():
@@ -257,6 +270,7 @@ class Node:
     # ---------------------------- Methods for tree manipulation ---------------------------
 
     def replace_by(self, subtree: Optional['Node']):
+        """ Replace this subtree with given """
         num = self.get_my_child_num()
         self.parent.set_nth_child(subtree, num)
         return self
@@ -324,6 +338,18 @@ class BinaryNode(Node):
     def right(self, value):
         self.children[1] = value
 
+    def initialize(self, **kwargs):
+        fields = {'key', 'value'}
+
+        for f, val in kwargs.items():
+            if f in fields:
+                setattr(self, f, val)
+
+        self.set_left(kwargs.get('left', None))
+        self.set_right(kwargs.get('right', None))
+
+        return self
+
     def get_branch(self, k) -> 'BinaryNode':
         """
         The same but faster
@@ -371,7 +397,7 @@ class BinaryNode(Node):
         else:
             return self.is_right()
 
-    def set_child(self, child: 'BinaryNode', is_left: bool):
+    def set_child(self, child: Optional['BinaryNode'], is_left: bool):
         if is_left:
             self.set_left(child)
         else:
@@ -389,11 +415,35 @@ class BinaryNode(Node):
             candidate_son = candidate_son.parent
         return candidate_son.parent
 
+    def find_node(self, key) -> Optional['BinaryNode']:
+        if self.key == key:
+            return self
+        elif branch := self.get_branch(key) is None:
+            return None
+        return branch.find(key)
+
     # ---------------------------- Methods for tree manipulation ---------------------------
 
     def replace_by(self, subtree: Optional['BinaryNode']):
-        """ Speedup of the common case """
+        """
+        Speedup of the common case
+        Replace this subtree with given
+        """
         self.parent.set_child(subtree, self.is_left())
+
+    def split_by(self, key) -> Tuple[Optional['BinaryNode'], Optional['BinaryNode']]:
+        try:
+            left, right = self.get_branch(key).split_by(key)
+        except AttributeError:
+            # should return self and None if there's no child
+            left = right = None
+
+        if key > self.key:
+            self.right = left
+            return self, right
+        else:
+            self.left = right
+            return left, self
 
     # ---------------------------- Methods for balancing -----------------------------------
 

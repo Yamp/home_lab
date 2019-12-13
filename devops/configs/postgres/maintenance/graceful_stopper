@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+cleanup() {
+  echo "Stopping postgres gracefully..."
+  pg_ctl stop
+}
+
+#Trap SIGTERM
+trap 'cleanup' SIGTERM
+
+#Execute a command
+"${@}" &
+
+#Wait
+wait $!

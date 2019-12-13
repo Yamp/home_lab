@@ -1,0 +1,51 @@
+defaultEntryPoints = ["http", "https"]
+logLevel = "DEBUG"
+debug = true
+
+sendAnonymousUsage = false
+
+[global]
+    checkNewVersion = true
+
+[retry]
+[api]
+
+[docker]
+  endpoint = "unix:///var/run/docker.sock"
+  domain = "lolmath.website"
+  watch = true
+  exposedByDefault = false
+
+##################################### Обрататываемые точки входа #####################################
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+#    [entryPoints.http.redirect]  # редирект, может быть птом я им воспользюусь
+#    entryPoint = "https"
+
+#  [acme.dnsChallenge]
+#  provider = "namecheap" # TODO: DNS Provider name (cloudflare, OVH, gandi...)
+#  delayBeforeCheck = 0
+
+#[[acme.domains]]  # wildcard
+#main = "*.lolmath.website"
+#[[acme.domains]]
+#  main = "local2.com"
+#  sans = ["test1.local2.com", "test2x.local2.com"]
+
+
+
+#[file]
+#[backends]
+#  [backends.django]
+#    [backends.django.servers.server1]
+#      url = "http://django:5000"
+#
+#[frontends]
+#  [frontends.django]
+#    backend = "django"
+#    passHostHeader = true
+#    [frontends.django.headers]
+#      HostsProxyHeaders = ['X-CSRFToken']
+#    [frontends.django.routes.dr1]
+#      rule = "Host:lolmath.ml"

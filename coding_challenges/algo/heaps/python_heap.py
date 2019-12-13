@@ -18,3 +18,6 @@ class StdHeap:
 
     def pop(self):
         return heappop(self.data)
+
+    def empty(self):
+        return len(self.data)

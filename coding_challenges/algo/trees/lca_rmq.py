@@ -1,12 +1,22 @@
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import Iterable
+from itertools import count
+from typing import Iterable, List
+
+from coding_challenges.algo.structures.disjoint_set import UnionFind
+from coding_challenges.algo.trees.all_trees import Node
 
 
-def get_counter():
-    i = 0
-    while True:
-        yield i
-        i += 1
+@dataclass
+class RMQRequest:
+    first: int
+    last: int
+
+
+@dataclass
+class LCARequest:
+    a: int
+    b: int
 
 
 @dataclass
@@ -17,12 +27,11 @@ class NlognRMQ:
         ...
 
 
-class LCATree:
-    def __init__(self):
-        self.children = []
-        self.parent = None
-        self.ancestors = []
+class LCATree(Node):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
+        self.ancestors = []
         self.in_time = None
         self.out_time = None
 
@@ -38,3 +47,33 @@ class LCATree:
 
     def build_ancestors(self):
         ...
+
+
+class TarjanTreeNode(LCATree):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.num = next(self.counter)
+        self.requests_lists = []
+
+
+class TarjanTree:
+    def __init__(self):
+        self.counter = count()
+        self.sets = UnionFind(1234)  # TODO: bullshit
+        self.node = TarjanTreeNode()
+        self.requests = defaultdict(list)
+
+    def create_requests(self, requests: List[LCARequest]):
+        for r in requests:
+            self.requests[r.a] += r.b
+            self.requests[r.b] += r.a
+
+    def tarjan_offline_lca(self, requests: List[LCARequest]):
+        visited = defaultdict(bool)
+
+        for n, e in self.node.nodes_dfs_inout():
+            if e == 'in':
+                visited[n.num] = True
+
+            self.sets.union(n.parent.num, n.num)
+            visited[n.num] = True

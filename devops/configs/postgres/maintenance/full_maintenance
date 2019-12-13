@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+vacuumdb --all --full --analyze
+psql -t -c "select datname from pg_database order by datname;" | xargs -n 1 -I"{}" -- psql -U root {} -c "reindex database {};"
+clusterdb --all --quiet

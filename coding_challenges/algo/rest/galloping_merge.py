@@ -14,8 +14,6 @@ def bin_search(arr, val, first, last):
 
     return False
 
-
-
 def merge(N, M):
     """
     Supposing N >> M

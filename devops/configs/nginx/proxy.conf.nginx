@@ -1,0 +1,148 @@
+################################################ BASIC SETTINGS ###################################################
+user nginx nginx;
+pid /var/run/nginx.pid;
+
+proxy_http_version 1.1;
+proxy_set_header Host $http_host;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection $proxy_connection;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $proxy_x_forwarded_proto;
+proxy_set_header X-Forwarded-Ssl $proxy_x_forwarded_ssl;
+proxy_set_header X-Forwarded-Port $proxy_x_forwarded_port;
+
+fastcgi_read_timeout 1d;
+proxy_read_timeout 1d;
+
+# Mitigate httpoxy attack (see README for details)
+proxy_set_header Proxy "";
+proxy_set_header Connection "";  # TODO: Why ?
+
+#auth_basic           “Please authenticate”;
+auth_basic_user_file /etc/nginx/.htpasswd;
+
+# tuning for best performance
+worker_processes auto;  # number of cores is ok
+timer_resolution 100ms;
+worker_rlimit_nofile 100000;
+# proxy
+proxy_buffering off;  # enable for synchronos workers
+#proxy_buffers 8 64k;  # shuld be able to accommodate answer
+#proxy_intersept_errors on;  # TODO: wtf?
+proxy_connect_timeout 1s;
+proxy_send_timeout 3s;  # shuld be able to accommodate answer
+proxy_read_timeout 3s;  # shuld be able to accommodate answer
+
+
+
+############################################### LOGGING ###########################################################
+error_log /var/log/nginx/error.log warn;  # TODO: maybe should log more
+#access_log /var/log/nginx/access.log main buffer=32k; # can (access_log off;) or decrease buffering
+access_log off;  # for performance
+log_subrequest on;  # by default off
+
+#error_page /404.html;  # TODO: add files
+error_page 500 502 503 504 /50x.html;
+
+events {
+    worker_connections 128;  # for hiload should be much bigger
+    use epoll;
+    multi_accept on;  # TODO: read
+}
+
+http {
+    ###################################### CACHING ###############################################################
+    open_file_cache max=200000 inactive=600s;
+    open_file_cache_valid 600s;
+    open_file_cache_min_uses 1;
+    open_file_cache_errors on;
+
+    ###################################### STRANGE PERFORMANCE STAFF #############################################
+    tcp_nopush on;
+    tcp_nodelay on;  # dont buffer tcp small data portions
+    types_hash_max_size 2048;
+
+    sendfile on;
+    aio threads;  # mn on, mb set pool TODO: read
+    aio_write on;
+    directio 8m;  # edge between sendfile (small) and aio (big)
+
+    #    postpone_output  # TODO: read
+
+    # BUFFERS
+    output_buffers 2 64k;
+    client_body_buffer_size 1m;
+    client_header_buffer_size 1m;
+    client_max_body_size 1024m;
+    large_client_header_buffers 4 4m;
+
+    # KEEPALIVES
+    client_body_timeout 60;  # treats big header
+    client_header_timeout 60;  # treats big header
+    send_timeout 30;  # if client stops responding free up memory
+    keepalive_timeout 300;  # default 70 mb free earlier
+    keepalive_requests 100000;
+    reset_timedout_connection on;
+
+    # HASHES
+    server_names_hash_max_size 512;
+    types_hash_max_size 2048;
+    variables_hash_max_size 2048;
+
+    ####################################### GZIPPING #############################################################
+    gzip on;
+    gzip_static on;
+    gzip_vary on;
+    gzip_disable msie6;
+    gzip_http_version 1.0;
+
+        # for normal guys
+        #    gzip_min_length 10240;
+        #    gzip_comp_level 1;
+        #    gzip_proxied expired no-cache no-store private auth;  # для адекватных
+
+        # for models
+    gzip_min_length 102400;
+    gzip_comp_level 8;
+    gzip_buffers 16 8k;
+    gzip_proxied any;  # для моделей, сжимать вообще все
+    gzip_types *
+
+        ####################################### SECURITY #############################################################
+    server_tokens off;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header X-Frame-Options "SAMEORIGIN";
+    server_name_in_redirect off;
+    #    resolver 127.0.0.1 [::1]:5353;  # maybe someday
+
+    # SSL SETTINGS
+    ssl_session_cache shared:SSL:5m;
+    ssl_session_timeout 1h;
+
+    server {
+        listen 80 reuseport;  # reuseport is cool port sharding
+        server_name lolmath.website;
+        backlog 1024;  # connections queue max size somaxconn
+    }
+
+    server {
+        listen 443 ssl http2  reuseport;  # reuseport is cool port sharding
+        listen [::]:443 ssl http2 reuseport;
+        server_name lolmath.website;
+        backlog 1024;  # connections queue max size somaxconn
+    }
+
+    # default virtual host
+    server {
+        listen 80 default;
+        server_name localhost;
+        deny all;
+    }
+
+#    upstream backend {  # TODO: how?
+#        keepalive 100;
+#        server ...
+#    }
+#
+}

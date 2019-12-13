@@ -20,7 +20,7 @@ class Edge:
         return str(self)
 
 
-def prims_tree(matrix: np.ndarray):
+def prim_tree(matrix: np.ndarray):
     n, res = len(matrix), []
     heap = StdHeap()
     visited = [False] * n
@@ -56,7 +56,7 @@ def kraskal_tree(matrix: np.ndarray):
 
 
 if __name__ == "__main__":
-    print('Prim:\n', prims_tree(np.array([
+    print('Prim:\n', prim_tree(np.array([
         [0, 2, 0, 6, 0],
         [2, 0, 3, 8, 5],
         [0, 3, 0, 0, 7],
@@ -64,7 +64,7 @@ if __name__ == "__main__":
         [0, 5, 7, 9, 0],
     ])))
 
-    print('Kraskal:\n', prims_tree(np.array([
+    print('Kraskal:\n', prim_tree(np.array([
         [0, 2, 0, 6, 0],
         [2, 0, 3, 8, 5],
         [0, 3, 0, 0, 7],
