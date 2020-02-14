@@ -1,0 +1,17 @@
+NAME : WHIZZKIDS96.2_8.tour
+COMMENT : Cost = 2_8
+COMMENT : Found by LKH [Keld Helsgaun] Thu Feb 13 03:15:04 2020
+TYPE : TOUR
+DIMENSION : 9
+TOUR_SECTION
+1
+2
+9
+4
+6
+7
+5
+8
+3
+-1
+EOF

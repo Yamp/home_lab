@@ -6,7 +6,7 @@ from coding_challenges.algo.structures.array_queue import NumberArrayDeque
 
 
 # TODO: euler cycle
-# TODO: scc
+# TODO: scc, briges, junctions
 
 class Graph:
     def __init__(self):
@@ -126,6 +126,10 @@ class FordFulkersonSolver:
                 break
 
         return self.flows
+
+
+def junction_points(matrix: np.ndarray) -> np.ndarray:
+    ...
 
 
 def print_flows(flows: np.array):

@@ -1,36 +1,34 @@
-import matplotlib.pyplot as plt
-import numpy as np
-from sklearn.ensemble import RandomForestRegressor
-from statsmodels.nonparametric.kernel_regression import KernelReg
+################################## param file ###############################
 
+# SPECIAL
+# PROBLEM_FILE = whizzkids96.atsp
+# OPTIMUM = 1183
+# MTSP_OBJECTIVE = MINMAX
+# MAX_CANDIDATES = 6
+# MAX_TRIALS = 10000
+# RUNS = 1
+# TOUR_FILE=./wz.res
 
-def get_maxes(arr):
-    maxes_num = 2
-    cur_maxes = []
-    x, Y = [], []
+################################## data file ###############################
 
-    for i, a in enumerate(arr):
-        if len(cur_maxes) == 0 or a > cur_maxes[0]:
-            if len(cur_maxes) > maxes_num:
-                del cur_maxes[0]
-            cur_maxes += [a]
-            cur_maxes.sort()
-            x += [i]
-            Y += [a]
+# NAME : WHIZZKIDS96
+# TYPE : ATSP
+# DIMENSION : 121
+# VEHICLES : 4
+# EDGE_WEIGHT_TYPE: EXPLICIT
+# EDGE_WEIGHT_FORMAT: FULL_MATRIX
+# EDGE_WEIGHT_SECTION
 
-    return np.array(x), np.array(Y)
+################################## res file ###############################
+# NAME : WHIZZKIDS96.1183_4715.tour
+# COMMENT : Cost = 1183_4715
+# COMMENT : Found by LKH [Keld Helsgaun] Thu Feb 13 01:03:44 2020
+# TYPE : TOUR
+# DIMENSION : 124
+# TOUR_SECTION
 
-
-N = 1000
-arr = np.random.rand(N) ** 2 * np.arange(N) ** 2 * 0.5
-
-x, Y = get_maxes(arr)
-
-kr = KernelReg(Y,x,'c')
-res, y_std = kr.fit(np.arange(N))
-
-plt.plot(arr, color="b")
-# plt.plot(x, Y, color="r")
-plt.plot(res, color="g")
-
-plt.show()
+a = [1, 84, 85, 90, 87, 97, 105, 110, 106, 107, 99, 103, 102, 96, 89, 88, 94, 95, 113, 98, 93, 91, 80, 57, 52, 50, 43,
+     38, 22, 19, 123, 86, 92, 115, 114, 116, 121, 119, 118, 120, 117, 112, 108, 111, 109, 104, 101, 100, 83, 78, 75, 72,
+     53, 47, 30, 21, 20, 17, 10, 12, 13, 4, 5, 8, 122, 74, 70, 62, 56, 51, 45, 46, 37, 35, 26, 31, 32, 33, 36, 44, 42,
+     24, 29, 28, 25, 23, 18, 16, 14, 11, 9, 2, 7, 6, 3, 124, 82, 73, 61, 66, 69, 68, 71, 76, 79, 81, 77, 67, 65, 64, 63,
+     58, 60, 59, 55, 54, 49, 48, 40, 41, 27, 39, 34, 15]

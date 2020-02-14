@@ -166,7 +166,7 @@ alias py2="python2 -m bpython"
 alias py3="python3 -m bpython"
 alias py=py3
 alias del="rmtrash"
-alias la='colorls -lA --sd'
+alias la='exa -lahmHF@ --git'
 function cs () {cd "$@" && ls}
 alias cds=cs
 alias mkcd='foo(){ mkdir -p "$1"; cd "$1" }; foo '
@@ -247,13 +247,12 @@ export PATH
 
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
 
-# if command -v pyenv 1>/dev/null 2>&1; then eval "$(pyenv init -)"; fi
+if command -v pyenv 1>/dev/null 2>&1; then eval "$(pyenv init -)"; fi
 # eval "$(thefuck --alias  --enable-experimental-instant-mode)"
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh  # autojump init
 if brew command command-not-found-init > /dev/null 2>&1; then eval "$(brew command-not-found-init)"; fi
 #should be in the end!
 source ~/.iterm2_shell_integration.zsh
-eval "$(pyenv init -)"
 
 # export NVM_DIR="$HOME/.nvm"
 # [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm

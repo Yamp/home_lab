@@ -153,7 +153,7 @@ class LinkedList:
         # TODO:  __setitem__, __getitem__, __delitem__, +, *, bla-bla, __reversed__, __int__
         return self._len
 
-    def __iter__(self) -> LinkedListNode:
+    def __iter__(self) -> Optional[LinkedListNode]:
         return self._first
 
     def first(self):

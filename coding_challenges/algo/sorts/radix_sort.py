@@ -1,17 +1,22 @@
-def extract_digit(num, d):
-    return num // 10 ** (d - 1) % 10
+import numpy as np
 
 
-def counting_sort(data, items_num=10, key=lambda x: x):
-    counts = [0] * items_num
-    res = [None] * data
-
-    for d in data:
-        counts[key(d)] += 1
+def extract_digit(num: int, i: int, base=10) -> int:
+    return int(num // base ** (i - 1) % base)
 
 
+def radix_sort(arr, max_len=None, base=10):
+    max_len = max_len or max(len(str(num)) for num in arr)
+
+    for i in range(max_len, -1, -1):
+        buckets = [[] for _ in range(base)]
+        for elem in arr:
+            buckets[extract_digit(elem, max_len - i)] += [elem]
+
+        arr[:] = sum(buckets, [])
 
 
-
-def radix_sort(arr, first: int, last: int, digits):
-    ...
+if __name__ == "__main__":
+    arr = np.random.randint(0, 999, 1000, dtype=np.int)
+    radix_sort(arr, max_len=3, base=10)
+    print(arr)

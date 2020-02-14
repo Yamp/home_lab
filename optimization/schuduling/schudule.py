@@ -7,7 +7,7 @@ r = S.Resource('r', periods=range(20))
 t2 = S.Task('CE2', length=20)
 t2 += r
 
-res = solvers.mip.solve(S, msg=0)
+res = solvers.mip.solve_tsp(S, msg=0)
 
 print(S.solution())
 print(S)

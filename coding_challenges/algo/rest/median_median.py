@@ -19,4 +19,3 @@ def sort_fifth():
 
 def median_median(arr):
     extend_with_infs(arr)
-    pass

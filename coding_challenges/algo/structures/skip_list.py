@@ -1,7 +1,6 @@
 from random import getrandbits
 from typing import Any, Optional, Type, List
 
-# TODO: bloom filter
 # TODO: consistent hashing
 from coding_challenges.algo.structures.linked_list import LinkedListNode, LinkedList, LinkedListIterator
 
@@ -92,3 +91,7 @@ class SkipList:
         res.push_front(Infinity())
 
         return res
+
+
+if __name__ == "__main__":
+    ...

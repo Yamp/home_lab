@@ -1,4 +1,4 @@
-from copy import deepcopy
+from copy import deepcopy, copy
 from typing import Any
 
 import numpy as np
@@ -7,7 +7,7 @@ from coding_challenges.algo.sorts.sort_utils import find_min, shift_forward
 
 
 def selection_sort(arr, first: int, last: int) -> Any:
-    res = deepcopy(arr)
+    res = copy(arr)
 
     for i in range(last - first + 1):
         res[i], ind = find_min(arr, first, last)

@@ -29,7 +29,7 @@ class LeftistHeap:
         small, big = sorted((self, other), key=itemgetter('data'))
 
         if small.right is not None:
-            small.right = small.right.merge(big)
+            small.right = small.right._merge_lists(big)
         else:
             small.right = big
 

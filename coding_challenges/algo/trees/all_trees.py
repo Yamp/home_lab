@@ -1,6 +1,8 @@
+from _bisect import bisect_left
+from bisect import insort, bisect
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional, Tuple, Type
+from typing import Iterable, List, Optional, Tuple, Type, Any
 
 import numpy as np
 
@@ -283,6 +285,11 @@ class Node:
         other.replace_by(self)
         return self
 
+    def add_child(self, key, value=None):
+        ...  # TODO
+        # insort(self.keys)
+        # self.children
+
 
 @dataclass
 class BinaryNode(Node):
@@ -329,14 +336,18 @@ class BinaryNode(Node):
     @left.setter
     def left(self, value):
         self.children[0] = value
+        if value is not None:
+            value.parent = self
 
     @property
-    def right(self):
+    def right(self) -> Optional['BinaryNode']:
         return self.children[1]
 
     @right.setter
     def right(self, value):
         self.children[1] = value
+        if value is not None:
+            value.parent = self
 
     def initialize(self, **kwargs):
         fields = {'key', 'value'}
@@ -691,6 +702,51 @@ class SearchTree():
         self.fake_node = node_class()
 
         self.fake_node = self.children[0]
+
+
+class BTreeNode(Node):
+    T = 5
+
+    def is_overfilled(self):
+        return len(self.children) > 2 * self.T
+
+    def is_undefilled(self):
+        return len(self.children) < self.T
+
+    def find_node(self, key) -> 'BTreeNode':
+        res = self
+        while not res.is_leaf():
+            res = res.get_branch(key)
+        return res
+
+    def paste(self, key, value=None):
+        node = self.find_node(key)
+        # node.
+        ...
+
+    def split(self):
+        l = len(self.keys)
+        assert l >= 2
+
+        middle = len(self.keys) // 2
+        r_keys, r_vals = self.keys[:middle], self.values[:middle]
+        l_key, l_vals = self.keys[middle + 1:], self.values[middle + 1:]
+        m_key, m_val = self.keys[middle], self.values[middle]
+
+        self.parent.add_child(m_key, m_val)  # TODO: add subtrees
+
+    def delete(self, key):
+        res = self
+        while not res.is_leaf():
+            res = res.get_branch(key)
+        return res
+
+    def delete_from_leaf(self, key):
+        i = bisect_left(self.keys, key)
+        val = self.values[i]
+        del self.keys[i]
+        del self.values[i]
+        return val
 
 
 def tree_sort(node_class: Type['Node'], data: np.ndarray):

@@ -31,3 +31,5 @@ PATH="/usr/local/opt/qt/bin:$PATH"
 PATH="$PYENV_ROOT/bin:$PATH"
 PATH="$PATH:/Users/dimitrius/.composer/vendor/bin"  # composer (PHP packages)
 export PATH
+
+eval "$(pyenv init -)"

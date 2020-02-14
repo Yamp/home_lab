@@ -6,9 +6,12 @@ import numpy as np
 
 # TODO: add sparce matrices
 # TODO: дерево поиска с неявным ключем
+# TODO: hyperloglog
 
 
 class FenwickTree:
+    # при индексации с единицы получаем длину отрезка — максимальную степень двойки, которая делит к
+
 
     def __init__(self, size):
         self.data = np.zeros(size, dtype=np.int32)

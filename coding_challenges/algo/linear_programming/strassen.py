@@ -94,7 +94,7 @@ def strassen_maxtrix_multiplication(
     C21 = res[n_mid:, :m_mid]
     C22 = res[n_mid:, m_mid:]
 
-    # TODO: actually need to go recursive, and add some naive mults for low dim
+    # (!!!) actually need to go recursive, and add some naive mults for low dim
     M1 = (A11 + A22) @ (B11 + B22)
     M2 = (A21 + A22) @ B11
     M3 = A11 @ (B12 - B22)

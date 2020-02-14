@@ -3,6 +3,8 @@ import sys
 from typing import List
 
 import numpy as np
+import re
+import regex
 
 
 # largest common prefix
@@ -150,6 +152,9 @@ def rabin_karp_search(
 
     return -1
 
+
+def re_search(needle: str, haystack: str):
+    return re.search(needle, haystack)
 
 def suffix_table(s: str) -> np.ndarray:
     """
