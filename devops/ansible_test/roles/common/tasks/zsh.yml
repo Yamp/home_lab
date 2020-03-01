@@ -36,4 +36,4 @@
   blockinfile:
     path: ~/.zshrc
     block: |
-      source ~/.iterm2_shell_integration
+      source ~/.iterm2_shell_integration.zsh
