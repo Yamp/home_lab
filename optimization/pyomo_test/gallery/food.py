@@ -57,7 +57,7 @@ if __name__ == "__main__":
         }
     }}
 
-    instance = model.create_instance(data)
+    instance = model.create_instance(data,,
     instance.valid_model_component()
     opt = SolverFactory('cbc')
     opt.solve_tsp(instance)

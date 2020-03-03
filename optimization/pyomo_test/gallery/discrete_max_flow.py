@@ -1,12 +1,13 @@
 import os
 from itertools import product
+import random
 
 from pyomo.core import base
 from pyomo.core.kernel import objective
 from pyomo.environ import *
 from pyomo import opt as solvers
 from typing import Dict, List, Tuple
-
+import numpy as np
 
 PRICE_OF_FAILURE = 10 ** 7
 FAILURE_ID = -1834579344
@@ -17,7 +18,7 @@ def print_result(model):
     model.display()
 
 
-def discreet_min_cost_max_flow_model():
+def discrete_min_cost_max_flow_model():
     """
     Создаем абстрактрую pyomo-модель, описывающую проблему и возвращаем ее
     """
@@ -31,6 +32,7 @@ def discreet_min_cost_max_flow_model():
     mod.m2m = base.Set(within=mod.middles * mod.non_source)  # middle -> middle ребра
 
     # Параметры модели
+    mod.loss_fractions = base.Param(mod.middles, within=base.NonNegativeReals)  # количество отсортированной фракции
     mod.capacities = base.Param(mod.middles, within=base.NonNegativeReals)  # Вместимости вершин middles
     mod.prices_m2m = base.Param(mod.m2m, within=base.NonNegativeReals)  # цены ребер m2m
     mod.prices_s2m = base.Param(mod.s2m, within=base.NonNegativeReals)  # цены ребер s2m
@@ -65,6 +67,8 @@ def discreet_min_cost_max_flow_model():
 
     # поток приходящий в конечные вершины
     total_flow = lambda m: sum(in_flow(m, v) for v in m.destinations)
+    # общая потеря
+    total_loss = lambda m: sum(in_flow(m, v) * m.loss_fractions[v] for v in m.middles)
     # поток выходящий из вершины vert -> все middle[dst]
     out_flow = lambda m, vert: sum(m.m2m_flows[src, dst] for src, dst in m.m2m if src == vert)
 
@@ -81,12 +85,16 @@ def discreet_min_cost_max_flow_model():
     )
 
     # В сумме проталкиваем весь возможный поток
+    # (поток входящий во все стоки - потери = sum поток выходящий из всех источников)
     mod.full_flow_constr = base.Constraint(
-        rule=lambda m: total_flow(m) == sum(m.source_vol[s] for s in m.sources)
+        rule=lambda m: total_flow(m) - total_loss(m) == sum(m.source_vol[s] for s in m.sources)
     )
 
     # поток входящий вершину равен выходящему
-    mod.conservation_constr = base.Constraint(mod.middles, rule=lambda m, v: in_flow(m, v) == out_flow(m, v))
+    mod.conservation_constr = base.Constraint(
+        mod.middles,
+        rule=lambda m, v: in_flow(m, v) * (1 - m.loss_fractions[v]) == out_flow(m, v)
+    )
 
     mod.total = base.Objective(
         sense=objective.minimize,
@@ -96,17 +104,9 @@ def discreet_min_cost_max_flow_model():
     return mod
 
 
-def create_instance(
-        m,
-        sources: List[int],  # id вершин
-        middles: List[int],
-        destinations: List[int],  # список id стоков
-
-        edges: List[Tuple[int, int]],  # допустимые ребра
-        capacities: Dict[int, float],  # словарь вершина -> пропускная способность
-        prices: Dict[Tuple, float],  # (v2, v2) -> цена на единицук потока
-        source_vol: Dict[int, float],  # индекс источника -> генерируемый поток
-):
+def create_instance(m, sources: List[int], middles: List[int], destinations: List[int], edges: List[Tuple[int, int]],
+                    capacities: Dict[int, float], prices: Dict[Tuple, float], source_vol: Dict[int, float],
+                    loss_fractions: Dict[int, float]):
     sources_set, middles_set, dests_set = map(set, [sources, middles, destinations])
     non_source_set = middles_set | dests_set
 
@@ -130,13 +130,14 @@ def create_instance(
         'prices_m2m': prices_m2m,
         'prices_s2m': prices_s2m,
         'source_vol': source_vol,
+        'loss_fractions': loss_fractions,
     }}
 
     return m.create_instance(data)
 
 
 def get_solver():
-    opt = solvers.SolverFactory('cplex')
+    opt = solvers.SolverFactory('cbc')
     opt.options['threads'] = os.cpu_count()
     # opt.options['absmipgap'] = 1
     # mb ratioGap = 1%
@@ -153,17 +154,17 @@ def add_fake_node(sources, edges, destinations, prices):
     prices.update(new_prices)
 
 
-def solve(sources, middles, edges, capacities, destinations, prices, source_vol):
+def solve(sources, middles, edges, capacities, destinations, prices, source_vol, loss_fractions):
     add_fake_node(sources, edges, destinations, prices)
-    model = discreet_min_cost_max_flow_model()
+    model = discrete_min_cost_max_flow_model()
     instance = create_instance(
         m=model,
         sources=sources, middles=middles, edges=edges,
         capacities=capacities, destinations=destinations,
-        prices=prices, source_vol=source_vol
+        prices=prices, source_vol=source_vol, loss_fractions=loss_fractions
     )
     opt = get_solver()
-    status = opt.solve_tsp(instance)
+    status = opt.solve(instance)
 
     return status, instance
 
@@ -178,6 +179,8 @@ if __name__ == "__main__":
     edges = [(i, j) for i, j in product(middles, middles + destinations) if i != j]
     edges += [(i, j) for i, j in product(sources, middles) if i != j]
     # edges.remove((0, 9))
+
+    loss_fractions = {i: 0.5 for i in middles}  # доля отсортировки
     capacities = {i: 3 for i in middles}
     prices = {(i, j): 1 for i, j in edges}
     source_vol = {i: 2 for i in sources}
@@ -186,9 +189,9 @@ if __name__ == "__main__":
 
     status, res = solve(sources=sources, middles=middles, edges=edges,
                         capacities=capacities, destinations=destinations,
-                        prices=prices, source_vol=source_vol)
+                        prices=prices, source_vol=source_vol, loss_fractions=loss_fractions)
 
     print(status)
-    # print_result(res)
+    print_result(res)
 
     # TODO: ребра только в одну сторону (запретить поток из стока, веса любого знака)

@@ -19,7 +19,7 @@ model.o = pyo.Objective(rule=o_rule)
 model.c = pyo.ConstraintList()
 
 # Create a model instance and optimize
-instance = model.create_instance()
+instance = model.create_instance(,
 results = opt.solve_tsp(instance)
 instance.display()
 
