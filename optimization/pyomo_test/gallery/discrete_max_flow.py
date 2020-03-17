@@ -1,15 +1,14 @@
 import os
 from itertools import product
-import random
 
 from pyomo.core import base
 from pyomo.core.kernel import objective
 from pyomo.environ import *
-from pyomo import opt as solvers
+from pyomo import environ
 from typing import Dict, List, Tuple
-import numpy as np
 
 PRICE_OF_FAILURE = 10 ** 7
+PRICE_OF_WRONG_PRIORITY = 10 ** 5
 FAILURE_ID = -1834579344
 
 
@@ -34,8 +33,8 @@ def discrete_min_cost_max_flow_model():
     # Параметры модели
     mod.loss_fractions = base.Param(mod.middles, within=base.NonNegativeReals)  # количество отсортированной фракции
     mod.capacities = base.Param(mod.middles, within=base.NonNegativeReals)  # Вместимости вершин middles
-    mod.prices_m2m = base.Param(mod.m2m, within=base.NonNegativeReals)  # цены ребер m2m
-    mod.prices_s2m = base.Param(mod.s2m, within=base.NonNegativeReals)  # цены ребер s2m
+    mod.prices_m2m = base.Param(mod.m2m, within=base.Reals)  # цены ребер m2m
+    mod.prices_s2m = base.Param(mod.s2m, within=base.Reals)  # цены ребер s2m
     mod.source_vol = base.Param(mod.sources, within=base.NonNegativeReals)  # количество потока рождаемого в источнике
 
     # Переменные
@@ -87,7 +86,7 @@ def discrete_min_cost_max_flow_model():
     # В сумме проталкиваем весь возможный поток
     # (поток входящий во все стоки - потери = sum поток выходящий из всех источников)
     mod.full_flow_constr = base.Constraint(
-        rule=lambda m: total_flow(m) - total_loss(m) == sum(m.source_vol[s] for s in m.sources)
+        rule=lambda m: total_flow(m) + total_loss(m) == sum(m.source_vol[s] for s in m.sources)
     )
 
     # поток входящий вершину равен выходящему
@@ -96,6 +95,7 @@ def discrete_min_cost_max_flow_model():
         rule=lambda m, v: in_flow(m, v) * (1 - m.loss_fractions[v]) == out_flow(m, v)
     )
 
+    # оптимизируем стоимость
     mod.total = base.Objective(
         sense=objective.minimize,
         rule=lambda m: total_cost(m)
@@ -104,9 +104,19 @@ def discrete_min_cost_max_flow_model():
     return mod
 
 
-def create_instance(m, sources: List[int], middles: List[int], destinations: List[int], edges: List[Tuple[int, int]],
-                    capacities: Dict[int, float], prices: Dict[Tuple, float], source_vol: Dict[int, float],
-                    loss_fractions: Dict[int, float]):
+def create_instance(
+        m,
+        sources: List[int],  # id вершин
+        middles: List[int],
+        destinations: List[int],  # список id стоков
+
+        edges: List[Tuple[int, int]],  # допустимые ребра
+        capacities: Dict[int, float],  # словарь вершина -> пропускная способность
+        prices: Dict[Tuple, float],  # (v2, v2) -> цена на единицук потока
+        source_vol: Dict[int, float],  # индекс источника -> генерируемый поток
+        loss_fractions: Dict[int, float],  # отсортированная фракция
+        priorities: Dict[Tuple[int, int], int]  # положительный приоритет уменьшает цену и наоборот
+):
     sources_set, middles_set, dests_set = map(set, [sources, middles, destinations])
     non_source_set = middles_set | dests_set
 
@@ -114,8 +124,14 @@ def create_instance(m, sources: List[int], middles: List[int], destinations: Lis
     m2m = [e for e in edges if e[0] in middles and e[1] in non_source_set]
 
     # тут стоимости потоков сразу с учетом потока!
-    prices_s2m = {k: prices[k] * source_vol[k[0]] for k in s2m}
-    prices_m2m = {k: prices[k] for k in m2m}
+    prices_s2m = {
+        k: prices[k] * source_vol[k[0]] - priorities[k] * PRICE_OF_WRONG_PRIORITY
+        for k in s2m
+    }
+    prices_m2m = {
+        k: prices[k] - priorities[k] * PRICE_OF_WRONG_PRIORITY  # если приоритет 1 — цена уменьшится и наоборот
+        for k in m2m
+    }
 
     data = {None: {
         # Множества
@@ -137,7 +153,7 @@ def create_instance(m, sources: List[int], middles: List[int], destinations: Lis
 
 
 def get_solver():
-    opt = solvers.SolverFactory('cbc')
+    opt = environ.SolverFactory('cbc')
     opt.options['threads'] = os.cpu_count()
     # opt.options['absmipgap'] = 1
     # mb ratioGap = 1%
@@ -146,22 +162,35 @@ def get_solver():
     return opt
 
 
-def add_fake_node(sources, edges, destinations, prices):
+def add_fake_node(
+        sources: List,
+        edges: List[Tuple],
+        destinations: List,
+        prices: Dict[Tuple, float],
+        priorities: Dict[Tuple, int],
+):
     destinations += [FAILURE_ID]
     edges += [(s, FAILURE_ID) for s in sources]
 
     new_prices = {(s, FAILURE_ID): PRICE_OF_FAILURE for s in sources}
     prices.update(new_prices)
+    priorities.update({(s, FAILURE_ID): 0 for s in sources})
 
 
-def solve(sources, middles, edges, capacities, destinations, prices, source_vol, loss_fractions):
-    add_fake_node(sources, edges, destinations, prices)
-    model = discrete_min_cost_max_flow_model()
+def solve(
+        sources, middles, edges, capacities, destinations,
+        prices, source_vol, loss_fractions, priorities
+):
+    add_fake_node(
+        sources=sources, edges=edges, destinations=destinations,
+        prices=prices, priorities=priorities
+    )
     instance = create_instance(
-        m=model,
+        m=discrete_min_cost_max_flow_model(),
         sources=sources, middles=middles, edges=edges,
         capacities=capacities, destinations=destinations,
-        prices=prices, source_vol=source_vol, loss_fractions=loss_fractions
+        prices=prices, source_vol=source_vol, loss_fractions=loss_fractions,
+        priorities=priorities
     )
     opt = get_solver()
     status = opt.solve(instance)
@@ -170,15 +199,24 @@ def solve(sources, middles, edges, capacities, destinations, prices, source_vol,
 
 
 if __name__ == "__main__":
-    # тестовые данные
+    def get_test_data(nodes):
+        return nodes[:900], nodes[900:990], nodes[-10:]
+
+
+    def get_small_test_data(nodes):
+        return nodes[:7], nodes[8:10], nodes[10:11]
+
+
     nodes = list(range(1000))
-    sources = nodes[:900]
-    middles = nodes[900:990]
-    destinations = nodes[-10:]
+    sources, middles, destinations = get_small_test_data(nodes)
 
     edges = [(i, j) for i, j in product(middles, middles + destinations) if i != j]
     edges += [(i, j) for i, j in product(sources, middles) if i != j]
-    # edges.remove((0, 9))
+
+    # приоритеты — целые числа
+    # приоритет по умолчанию — 0, меньший приоритет — не писпользоват ребро, больший — обязательно использовать
+    priorities = {(i, j): 0 for i, j in product(middles, middles + destinations) if i != j}
+    priorities.update({(i, j): -1 for i, j in product(sources, middles) if i != j})
 
     loss_fractions = {i: 0.5 for i in middles}  # доля отсортировки
     capacities = {i: 3 for i in middles}
@@ -189,7 +227,9 @@ if __name__ == "__main__":
 
     status, res = solve(sources=sources, middles=middles, edges=edges,
                         capacities=capacities, destinations=destinations,
-                        prices=prices, source_vol=source_vol, loss_fractions=loss_fractions)
+                        prices=prices, source_vol=source_vol, loss_fractions=loss_fractions,
+                        priorities=priorities
+                        )
 
     print(status)
     print_result(res)

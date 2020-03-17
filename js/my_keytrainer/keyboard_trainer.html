@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="">
+<head>
+    <meta charset="UTF-8">
+    <title>KeyTrain</title>
+</head>
+<style>
+    h1 {
+        font-size: 200px;
+        text-align: center;
+    }
+
+    .error {
+        background: red;
+    }
+</style>
+<body>
+<h1 id="main_header">Enter</h1>
+</body>
+<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+<script>
+    let keys = 'ъхзцкмтеун.'
+    let expected_key = 'Enter';
+    let header = $('#main_header');
+    let time = new Date();
+
+    function callback(k) {
+        let prev_time = time;
+        time = new Date();
+        console.log(expected_key + ':' + k + ':' + (time - prev_time) / 1000)
+
+        if (k === expected_key) {
+            expected_key = keys[Math.floor(Math.random() * keys.length)]
+            header.text(expected_key).removeClass('error')
+        } else {
+            header.addClass('error')
+        }
+    }
+
+    document.addEventListener('keydown', ev => {callback(ev.key)}, true)
+</script>
+</html>

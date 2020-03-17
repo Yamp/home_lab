@@ -817,3 +817,5 @@ devops/ansible_test/roles/provision_debug/templates/
 devops/ansible_test/roles/provision_debug/vars/
 devops/ansible_test/roles/security/
 !/coding_challenges/algo/sorts/merge_sort.py
+
+*node_modules/

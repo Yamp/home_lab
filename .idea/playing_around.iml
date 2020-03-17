@@ -16,5 +16,10 @@
     </content>
     <orderEntry type="jdk" jdkName="Python 3.8 (home_lab)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="jquery-3.4.1" level="application" />
+    <orderEntry type="library" name="jquery-3.4.1" level="application" />
+    <orderEntry type="library" name="jquery" level="application" />
+    <orderEntry type="library" name="semantic-ui" level="application" />
+    <orderEntry type="library" name="sweetalert" level="application" />
   </component>
 </module>
