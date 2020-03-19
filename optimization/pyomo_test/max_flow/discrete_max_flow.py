@@ -1,20 +1,42 @@
 import os
-from itertools import product
+from itertools import product, chain
 
 from pyomo.core import base
 from pyomo.core.kernel import objective
 from pyomo.environ import *
 from pyomo import environ
 from typing import Dict, List, Tuple
+import numpy as np
 
-PRICE_OF_FAILURE = 10 ** 7
-PRICE_OF_WRONG_PRIORITY = 10 ** 5
+MAX_PRIORITY = 15
+FOOLING_EDGES = 5
 FAILURE_ID = -1834579344
 
+
+# TODO: вернуть потоки к исходным единицам
 
 def print_result(model):
     # print(f'Статус = {status.solver.termination_condition}')
     model.display()
+
+
+def normalize_volumes_and_capacities(volumes, capacities):
+    """
+    Гарантируем, что любой поток будет меньше 1 где угодно
+    :param volumes: объемы в источниках
+    :param capacities: вместимости ребер
+    :return: new_volumes, new_capacities
+    """
+    mm = sum(volumes.values())
+    return {k: v / mm for k, v in volumes.items()}, {k: v / mm for k, v in capacities.items()}
+
+
+def normalize_prices(prices):
+    """
+    Любая цена меньше 1
+    """
+    res, mm = {}, max(prices.values())
+    return {k: v / mm for k, v in prices.items()}
 
 
 def discrete_min_cost_max_flow_model():
@@ -54,6 +76,7 @@ def discrete_min_cost_max_flow_model():
                 if dst == vert
             )
 
+    # суммарная рассчетная стоимость
     def total_cost(m):
         return \
             sum(
@@ -125,11 +148,11 @@ def create_instance(
 
     # тут стоимости потоков сразу с учетом потока!
     prices_s2m = {
-        k: prices[k] * source_vol[k[0]] - priorities[k] * PRICE_OF_WRONG_PRIORITY
+        k: (prices[k] - np.sign(priorities[k]) * FOOLING_EDGES ** abs(priorities[k])) * source_vol[k[0]]
         for k in s2m
     }
     prices_m2m = {
-        k: prices[k] - priorities[k] * PRICE_OF_WRONG_PRIORITY  # если приоритет 1 — цена уменьшится и наоборот
+        k: prices[k] - np.sign(priorities[k]) * FOOLING_EDGES ** abs(priorities[k])  # если приоритет 1 — цена уменьш
         for k in m2m
     }
 
@@ -172,7 +195,7 @@ def add_fake_node(
     destinations += [FAILURE_ID]
     edges += [(s, FAILURE_ID) for s in sources]
 
-    new_prices = {(s, FAILURE_ID): PRICE_OF_FAILURE for s in sources}
+    new_prices = {(s, FAILURE_ID): FOOLING_EDGES ** MAX_PRIORITY for s in sources}
     prices.update(new_prices)
     priorities.update({(s, FAILURE_ID): 0 for s in sources})
 
@@ -181,6 +204,8 @@ def solve(
         sources, middles, edges, capacities, destinations,
         prices, source_vol, loss_fractions, priorities
 ):
+    prices = normalize_prices(prices)
+    source_vol, capacities = normalize_volumes_and_capacities(source_vol, capacities)
     add_fake_node(
         sources=sources, edges=edges, destinations=destinations,
         prices=prices, priorities=priorities
@@ -225,11 +250,12 @@ if __name__ == "__main__":
 
     # print(f'{nodes=}\n{sources=}\n{middles=}\n{destinations=}\n{edges=}\n{capacities=}\n{prices=}\n{source_vol=}')
 
-    status, res = solve(sources=sources, middles=middles, edges=edges,
-                        capacities=capacities, destinations=destinations,
-                        prices=prices, source_vol=source_vol, loss_fractions=loss_fractions,
-                        priorities=priorities
-                        )
+    status, res = solve(
+        sources=sources, middles=middles, edges=edges,
+        capacities=capacities, destinations=destinations,
+        prices=prices, source_vol=source_vol, loss_fractions=loss_fractions,
+        priorities=priorities
+    )
 
     print(status)
     print_result(res)
