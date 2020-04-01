@@ -27,7 +27,7 @@ model.o = pyo.Objective(rule=o_rule)  # добавляем цел оптимза
 model.c = pyo.ConstraintList()  # создаем пустой список огрангичений
 
 print('Создаем конкретную модель из абстрактной и решаем')
-instance = model.create_instance(,
+instance = model.create_instance()
 solve_and_print(instance)
 
 # Iterate to eliminate the previously found solution

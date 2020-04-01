@@ -1,10 +1,11 @@
 import os
 from itertools import product, chain
+from pprint import pprint
 
 from pyomo.core import base
 from pyomo.core.kernel import objective
 from pyomo.environ import *
-from pyomo import environ
+import pyomo.environ as pyo
 from typing import Dict, List, Tuple
 import numpy as np
 
@@ -12,12 +13,12 @@ MAX_PRIORITY = 15
 FOOLING_EDGES = 5
 FAILURE_ID = -1834579344
 
+# global vars
+volume_sum = None
 
-# TODO: вернуть потоки к исходным единицам
 
-def print_result(model):
-    # print(f'Статус = {status.solver.termination_condition}')
-    model.display()
+def print_result(res_dict):
+    pprint(res_dict)
 
 
 def normalize_volumes_and_capacities(volumes, capacities):
@@ -25,18 +26,26 @@ def normalize_volumes_and_capacities(volumes, capacities):
     Гарантируем, что любой поток будет меньше 1 где угодно
     :param volumes: объемы в источниках
     :param capacities: вместимости ребер
+
     :return: new_volumes, new_capacities
     """
-    mm = sum(volumes.values())
-    return {k: v / mm for k, v in volumes.items()}, {k: v / mm for k, v in capacities.items()}
+    global volume_sum
+
+    volume_sum = sum(volumes.values())
+    return (
+        {k: v / volume_sum for k, v in volumes.items()} if volume_sum else {},
+        {k: v / volume_sum for k, v in capacities.items()} if volume_sum else {},
+    )
 
 
 def normalize_prices(prices):
     """
     Любая цена меньше 1
     """
-    res, mm = {}, max(prices.values())
-    return {k: v / mm for k, v in prices.items()}
+    return {
+        k: v / max(prices.values())
+        for k, v in prices.items()
+    } if prices else {}
 
 
 def discrete_min_cost_max_flow_model():
@@ -49,8 +58,8 @@ def discrete_min_cost_max_flow_model():
     mod.middles = base.Set()  # не источники
     mod.destinations = base.Set()  # стоки
     mod.non_source = mod.middles | mod.destinations
-    mod.s2m = base.Set(within=mod.sources * mod.non_source)  # source -> middle ребра
-    mod.m2m = base.Set(within=mod.middles * mod.non_source)  # middle -> middle ребра
+    mod.s2m = base.Set(within=mod.sources * mod.non_source)  # source -> non_source ребра
+    mod.m2m = base.Set(within=mod.middles * mod.non_source)  # middle -> non_source ребра
 
     # Параметры модели
     mod.loss_fractions = base.Param(mod.middles, within=base.NonNegativeReals)  # количество отсортированной фракции
@@ -97,13 +106,15 @@ def discrete_min_cost_max_flow_model():
     # Из каждого источника выходит ровно одно ребро
     mod.one_x_constr = base.Constraint(
         mod.sources,
-        rule=lambda m, vert: sum(m.s2m_indicators[src, dst] for src, dst in m.s2m if vert == src) == 1
+        rule=lambda m, vert: sum(
+            m.s2m_indicators[src, dst] for src, dst in m.s2m if vert == src
+        )
+                             == 1,
     )
 
     # поток входящий в middle вершину не больше допустимого (мощности вершины)
     mod.capacity_constr = base.Constraint(
-        mod.middles,
-        rule=lambda m, v: in_flow(m, v) <= m.capacities[v]
+        mod.middles, rule=lambda m, v: in_flow(m, v) <= m.capacities[v]
     )
 
     # В сумме проталкиваем весь возможный поток
@@ -115,14 +126,11 @@ def discrete_min_cost_max_flow_model():
     # поток входящий вершину равен выходящему
     mod.conservation_constr = base.Constraint(
         mod.middles,
-        rule=lambda m, v: in_flow(m, v) * (1 - m.loss_fractions[v]) == out_flow(m, v)
+        rule=lambda m, v: in_flow(m, v) * (1 - m.loss_fractions[v]) == out_flow(m, v),
     )
 
     # оптимизируем стоимость
-    mod.total = base.Objective(
-        sense=objective.minimize,
-        rule=lambda m: total_cost(m)
-    )
+    mod.total = base.Objective(sense=objective.minimize, rule=lambda m: total_cost(m))
 
     return mod
 
@@ -148,11 +156,13 @@ def create_instance(
 
     # тут стоимости потоков сразу с учетом потока!
     prices_s2m = {
-        k: (prices[k] - np.sign(priorities[k]) * FOOLING_EDGES ** abs(priorities[k])) * source_vol[k[0]]
+        k: (prices[k] - np.sign(priorities[k]) * FOOLING_EDGES ** abs(priorities[k]))
+           * source_vol[k[0]]
         for k in s2m
     }
     prices_m2m = {
-        k: prices[k] - np.sign(priorities[k]) * FOOLING_EDGES ** abs(priorities[k])  # если приоритет 1 — цена уменьш
+        k: prices[k]  # если приоритет > 0 — цена уменьшается
+           - np.sign(priorities[k]) * FOOLING_EDGES ** abs(priorities[k])
         for k in m2m
     }
 
@@ -176,8 +186,8 @@ def create_instance(
 
 
 def get_solver():
-    opt = environ.SolverFactory('cbc')
-    opt.options['threads'] = os.cpu_count()
+    opt = pyo.SolverFactory("cbc")
+    opt.options["threads"] = os.cpu_count()
     # opt.options['absmipgap'] = 1
     # mb ratioGap = 1%
     # seconds = 1000 sec?
@@ -204,6 +214,10 @@ def solve(
         sources, middles, edges, capacities, destinations,
         prices, source_vol, loss_fractions, priorities
 ):
+    """
+    Решкалка: принимает все входные параметры, возвращает status и словарь потоков
+    :return: status
+    """
     prices = normalize_prices(prices)
     source_vol, capacities = normalize_volumes_and_capacities(source_vol, capacities)
     add_fake_node(
@@ -220,7 +234,33 @@ def solve(
     opt = get_solver()
     status = opt.solve(instance)
 
-    return status, instance
+    return status, get_flows(instance)
+
+
+def get_flows(instance):
+    """
+    Извлекаем результат, нормализуем обратно, потоки
+    :param instance:
+    :return:
+    """
+    global volume_sum
+    res = {
+        e: pyo.value(instance.m2m_flows[e])
+        for e in instance.m2m_flows
+    }
+
+    res.update(
+        {
+            e: pyo.value(instance.s2m_indicators[e]) * pyo.value(instance.source_vol[e[0]])
+            for e in instance.s2m_indicators
+        }
+    )
+
+    # возвращаем к исходным единицам
+    for k in res.keys():
+        res[k] *= volume_sum
+
+    return res
 
 
 if __name__ == "__main__":
@@ -236,12 +276,12 @@ if __name__ == "__main__":
     sources, middles, destinations = get_small_test_data(nodes)
 
     edges = [(i, j) for i, j in product(middles, middles + destinations) if i != j]
-    edges += [(i, j) for i, j in product(sources, middles) if i != j]
+    edges += [(i, j) for i, j in product(sources, middles + destinations) if i != j]
 
     # приоритеты — целые числа
     # приоритет по умолчанию — 0, меньший приоритет — не писпользоват ребро, больший — обязательно использовать
     priorities = {(i, j): 0 for i, j in product(middles, middles + destinations) if i != j}
-    priorities.update({(i, j): -1 for i, j in product(sources, middles) if i != j})
+    priorities.update({(i, j): -1 for i, j in product(sources, middles + destinations) if i != j})
 
     loss_fractions = {i: 0.5 for i in middles}  # доля отсортировки
     capacities = {i: 3 for i in middles}

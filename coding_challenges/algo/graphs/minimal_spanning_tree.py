@@ -34,7 +34,10 @@ def prim_tree(matrix: np.ndarray):
 
     visit(0)
     for i in range(n - 1):
-        res += [heap.pop()]
+        while visited[(new_edge := heap.pop()).dst]:
+            pass
+        else:
+            res += [new_edge]
         visit(res[-1].dst)
 
     return res
@@ -56,18 +59,14 @@ def kraskal_tree(matrix: np.ndarray):
 
 
 if __name__ == "__main__":
-    print('Prim:\n', prim_tree(np.array([
-        [0, 2, 0, 6, 0],
+    matrix = np.array([
+        [0, 2, 0, 1, 0],
         [2, 0, 3, 8, 5],
         [0, 3, 0, 0, 7],
-        [6, 8, 0, 0, 9],
+        [1, 8, 0, 0, 9],
         [0, 5, 7, 9, 0],
-    ])))
+    ])
 
-    print('Kraskal:\n', prim_tree(np.array([
-        [0, 2, 0, 6, 0],
-        [2, 0, 3, 8, 5],
-        [0, 3, 0, 0, 7],
-        [6, 8, 0, 0, 9],
-        [0, 5, 7, 9, 0],
-    ])))
+    print('Prim:\n', prim_tree(matrix))
+
+    print('Kraskal:\n', prim_tree(matrix))
